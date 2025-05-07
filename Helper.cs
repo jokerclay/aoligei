@@ -13,4 +13,6 @@ public static class Helper
 
     public static string GetMusicBackgroundDir(){ return Path.Combine(GetMusicDir(), "background"); }
     public static string? GetMusicEndDir(){ return Path.Combine(GetMusicDir(), "good"); }
+    public static string? GetRunningGifFile1Path() { return Path.Combine(GetResourceDir(), "image","running1.gif"); }
+    public static string? GetRunningGifFile2Path() { return Path.Combine(GetResourceDir(), "image","running2.gif"); }
 }

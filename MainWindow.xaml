@@ -3,21 +3,34 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:wpfAnimatedGif="http://wpfanimatedgif.codeplex.com"
         xmlns:local="clr-namespace:aoligei"
+        Topmost="True"
         mc:Ignorable="d"
-        Title="奥力给" Height="300" Width="300">
+        ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        SizeToContent="Manual"
+        Title="奥力给" Height="350" Width="300">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <!-- 用户选择背景音乐文件夹 -->
             <RowDefinition Height="Auto"/>
-            <!-- 背景设置 -->
-            <RowDefinition Height="Auto"/>
+            
             <!-- 时间设置 -->
             <RowDefinition Height="Auto"/>
+            
+            <!-- 开始/重置按钮 -->
+            <RowDefinition Height="Auto"/>
+
             <!-- 音乐设置 -->
             <RowDefinition Height="Auto"/>
-            <!-- 按钮 -->
+
+            <!-- 当前时间显示 -->
+            <RowDefinition Height="Auto"/>
+
+            <!-- 倒计时显示 -->
             <RowDefinition Height="*"/>
-            <!-- 显示 -->
+
         </Grid.RowDefinitions>
 
         <!-- 用户选择背景音乐文件夹 -->
@@ -45,8 +58,18 @@
             <Slider x:Name="VolumeSlider" Width="120" Minimum="0" Maximum="1" Value="0.5" Margin="10,0" ValueChanged="VolumeSlider_ValueChanged" />
         </StackPanel>
 
+        <!-- 当前时间显示 -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,10">
+            <Image x:Name="GifImage1" Width="60" Height="60"/>
+            <TextBlock x:Name="TimeTextBlock"
+                   FontSize="30"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+            <Image x:Name="GifImage2" Width="60" Height="60"/>
+        </StackPanel>
+
         <!-- 倒计时显示 -->
-        <TextBlock x:Name="TimerDisplay" Grid.Row="4" FontSize="48" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <TextBlock x:Name="TimerDisplay" Grid.Row="5" FontSize="48" HorizontalAlignment="Center" VerticalAlignment="Center"/>
     </Grid>
 
 </Window>

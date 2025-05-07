@@ -1,15 +1,19 @@
 ﻿using Ookii.Dialogs.Wpf;
+using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using WpfAnimatedGif;
 
 namespace aoligei;
 
 public partial class MainWindow : Window
 {
-    private DispatcherTimer _timer;
+    private DispatcherTimer _countDownTimer;
+    private readonly DispatcherTimer _LocalTimer;
     private TimeSpan _remaining;
     private string? _backgroundDir;
 
@@ -22,12 +26,51 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += TimerTick;
+        ResizeMode = ResizeMode.NoResize;
+        WindowStyle = WindowStyle.SingleBorderWindow;
+        _countDownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _countDownTimer.Tick += TimerTick;
+        _LocalTimer = new DispatcherTimer{Interval = TimeSpan.FromSeconds(1)};
+        _LocalTimer.Tick += UpdateTime;
+        _LocalTimer.Start();
+        UpdateTime(null, null); // Set initial time immediately
+
 
         // 当背景音乐播放完一首后，继续播放下一首
         _backgroundPlayer.MediaEnded += (s, e) => PlayMusic(Caller.Background);
+        SetGifImage();
     }
+
+    private void SetGifImage()
+    {
+        var gifFilePath = Helper.GetRunningGifFile1Path();
+        if (gifFilePath is not null)
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.UriSource = new Uri(gifFilePath);
+            image.EndInit();
+            ImageBehavior.SetAnimatedSource(GifImage1, image);
+        }
+
+
+        var gifFilePath2 = Helper.GetRunningGifFile2Path();
+        if (gifFilePath2 is not null)
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.UriSource = new Uri(gifFilePath2);
+            image.EndInit();
+            ImageBehavior.SetAnimatedSource(GifImage2, image);
+        }
+
+    }
+
+    private void UpdateTime(object? sender, EventArgs e)
+    {
+        TimeTextBlock.Text = DateTime.Now.ToString("HH:mm:ss");
+    }
+
 
     // 使用 Ookii.Dialogs.Wpf 的 VistaFolderBrowserDialog 实现 WPF 原生文件夹选择
     private void BrowseBackgroundFolder_Click(object sender, RoutedEventArgs e)
@@ -58,7 +101,7 @@ public partial class MainWindow : Window
             _remaining = TimeSpan.FromMinutes(minutes);
             TimerDisplay.Text = _remaining.ToString("mm\\:ss");
             PlayStartEffectThenBackground(); // 播放开始音效，播放完后开始背景音乐
-            _timer.Start();
+            _countDownTimer.Start();
             StartButton.IsEnabled = false;
         }
         else
@@ -68,14 +111,14 @@ public partial class MainWindow : Window
     }
 
     // 每秒触发一次，用于更新倒计时显示
-    private void TimerTick(object sender, EventArgs e)
+    private void TimerTick(object? sender, EventArgs e)
     {
         _remaining = _remaining.Subtract(TimeSpan.FromSeconds(1));
         TimerDisplay.Text = _remaining.ToString("mm\\:ss");
 
         if (_remaining <= TimeSpan.Zero)
         {
-            _timer.Stop();
+            _countDownTimer.Stop();
             _backgroundPlayer.Stop();
             PlayMusic(Caller.End); // 播放结束音效
             MessageBox.Show("时间到！休息一下吧。", "专注结束", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -86,7 +129,7 @@ public partial class MainWindow : Window
     // 用户点击“重置”按钮
     private void ResetButton_Click(object sender, RoutedEventArgs e)
     {
-        _timer.Stop();
+        _countDownTimer.Stop();
         _remaining = TimeSpan.Zero;
         TimerDisplay.Text = "00:00";
         _backgroundPlayer.Stop();
