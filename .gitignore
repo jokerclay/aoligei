@@ -717,3 +717,5 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,windows,dotnetcore,csharp,jetbrains+all,visualstudiocode
 
+
+dist/
