@@ -54,6 +54,22 @@ public partial class MainWindow : Window
         // 当背景音乐播放完一首后，继续播放下一首
         _backgroundPlayer.MediaEnded += (s, e) => PlayMusic(Caller.Background);
         SetGifImage();
+
+        // 默认初始化自带背景音乐，开箱即用
+        InitDefaultBackgroundMusic();
+    }
+
+    // 默认加载项目自带的背景音乐目录
+    private void InitDefaultBackgroundMusic()
+    {
+        var defaultDir = Helper.GetMusicBackgroundDir();
+        if (Directory.Exists(defaultDir))
+        {
+            _backgroundDir = defaultDir;
+            BackgroundDirBox.Text = _backgroundDir;
+            BrowseFolderButton.Content = "默认歌单";
+            BrowseFolderButton.ToolTip = $"当前背景音乐：内置默认歌单 (点击可更换本地文件夹)\n路径：{_backgroundDir}";
+        }
     }
 
     // 拖拽窗口移动
@@ -183,15 +199,16 @@ public partial class MainWindow : Window
         var dialog = new VistaFolderBrowserDialog
         {
             Description = "请选择背景音乐文件夹",
-            UseDescriptionForTitle = true
+            UseDescriptionForTitle = true,
+            SelectedPath = _backgroundDir ?? Helper.GetMusicBackgroundDir()
         };
         if (dialog.ShowDialog(this) == true)
         {
             _backgroundDir = dialog.SelectedPath;
             BackgroundDirBox.Text = _backgroundDir;
             var dirName = Path.GetFileName(_backgroundDir);
-            BrowseFolderButton.Content = string.IsNullOrEmpty(dirName) ? "🎵 已选歌" : $"🎵 {dirName}";
-            BrowseFolderButton.ToolTip = _backgroundDir;
+            BrowseFolderButton.Content = string.IsNullOrEmpty(dirName) ? "已选歌单" : dirName;
+            BrowseFolderButton.ToolTip = $"当前背景音乐目录：{_backgroundDir} (点击可更换文件夹)";
         }
     }
 
@@ -200,8 +217,12 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(_backgroundDir) || !Directory.Exists(_backgroundDir))
         {
-            MessageBox.Show("请先点击【📁 选歌】选择有效的背景音乐文件夹。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            InitDefaultBackgroundMusic();
+            if (string.IsNullOrWhiteSpace(_backgroundDir) || !Directory.Exists(_backgroundDir))
+            {
+                MessageBox.Show("未找到有效的背景音乐文件夹，请点击底栏按钮指定音乐目录。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
         }
 
         if (int.TryParse(MinutesBox.Text, out int minutes) && minutes > 0)

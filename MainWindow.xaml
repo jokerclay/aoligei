@@ -243,10 +243,10 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,5">
                         <TextBox x:Name="BackgroundDirBox" Visibility="Collapsed"/>
                         
-                        <Button x:Name="BrowseFolderButton" Content="📁 选歌" 
+                        <Button x:Name="BrowseFolderButton" Content="默认歌单" 
                                 Width="68" Height="25"
                                 Style="{StaticResource CapsuleButtonStyle}"
-                                ToolTip="选择背景音乐文件夹"
+                                ToolTip="当前背景音乐：内置默认歌单 (点击可更换本地文件夹)"
                                 Click="BrowseBackgroundFolder_Click"/>
                         
                         <Button x:Name="NextTrackButton" Content="⏭️ 切歌" 
