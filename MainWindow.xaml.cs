@@ -4,7 +4,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,7 +12,7 @@ using WpfAnimatedGif;
 
 namespace aoligei;
 
-public partial class MainWindow : AcrylicWindow
+public partial class MainWindow : Window
 {
     private DispatcherTimer _countDownTimer;
     private readonly DispatcherTimer _LocalTimer;
@@ -24,26 +23,25 @@ public partial class MainWindow : AcrylicWindow
     private readonly MediaPlayer _backgroundPlayer = new MediaPlayer(); // 用于播放背景音乐
     private static readonly Random _random = new Random();
 
+    public enum AppThemeMode { Dark, Light, System }
+    private AppThemeMode _currentTheme = AppThemeMode.Dark;
+
     enum Caller { Start, Background, End } // 枚举播放类型：开始音效、背景音乐、结束音效
 
     public MainWindow()
     {
         InitializeComponent();
-        ResizeMode = ResizeMode.NoResize;
 
-        // 初始化亚克力外观（去除噪点、加深暗色）
-        UpdateAcrylicAppearance();
+        // 默认初始化深色主题
+        ApplyTheme(AppThemeMode.Dark);
 
-        // 监听系统主题变化（当用户选择“跟随系统”时实时联动）
+        // 监听系统主题变化
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += (s, e) =>
         {
-            Dispatcher.Invoke(() =>
+            if (_currentTheme == AppThemeMode.System)
             {
-                if (ThemeComboBox?.SelectedIndex == 0)
-                {
-                    UpdateAcrylicAppearance();
-                }
-            });
+                Dispatcher.Invoke(() => ApplyTheme(AppThemeMode.System));
+            }
         };
 
         _countDownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -51,61 +49,84 @@ public partial class MainWindow : AcrylicWindow
         _LocalTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _LocalTimer.Tick += UpdateTime;
         _LocalTimer.Start();
-        UpdateTime(this, EventArgs.Empty); // Set initial time immediately
+        UpdateTime(this, EventArgs.Empty);
 
         // 当背景音乐播放完一首后，继续播放下一首
         _backgroundPlayer.MediaEnded += (s, e) => PlayMusic(Caller.Background);
         SetGifImage();
     }
 
-    // 主题切换（跟随系统 / 浅色 / 深色）
-    private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    // 拖拽窗口移动
+    private void CircleBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        UpdateAcrylicAppearance();
-    }
-
-    private void UpdateAcrylicAppearance()
-    {
-        if (ThemeComboBox == null) return;
-
-        bool isDark;
-        switch (ThemeComboBox.SelectedIndex)
+        if (e.ButtonState == MouseButtonState.Pressed)
         {
-            case 1: // 浅色模式
-                ResourceDictionaryEx.GlobalTheme = ElementTheme.Light;
-                isDark = false;
-                break;
-            case 2: // 深色模式
-                ResourceDictionaryEx.GlobalTheme = ElementTheme.Dark;
-                isDark = true;
-                break;
-            default: // 0: 跟随系统
-                ResourceDictionaryEx.GlobalTheme = ElementTheme.Default;
-                isDark = IsSystemDarkMode();
-                break;
+            DragMove();
         }
-
-        ApplyAcrylicTint(isDark);
     }
 
-    private void ApplyAcrylicTint(bool isDark)
+    // 最小化与关闭
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    // 外观主题循环切换 (深色 -> 浅色 -> 跟随系统 -> 深色)
+    private void ThemeButton_Click(object sender, RoutedEventArgs e)
     {
-        // 彻底去除噪点纹理，消除画面颗粒感
-        NoiseOpacity = 0.0;
+        _currentTheme = _currentTheme switch
+        {
+            AppThemeMode.Dark => AppThemeMode.Light,
+            AppThemeMode.Light => AppThemeMode.System,
+            _ => AppThemeMode.Dark
+        };
+        ApplyTheme(_currentTheme);
+    }
+
+    private void ApplyTheme(AppThemeMode mode)
+    {
+        bool isDark = mode switch
+        {
+            AppThemeMode.Light => false,
+            AppThemeMode.Dark => true,
+            _ => IsSystemDarkMode()
+        };
+
+        ThemeButton.Content = mode switch
+        {
+            AppThemeMode.Light => "☀️",
+            AppThemeMode.Dark => "🌙",
+            _ => "💻"
+        };
+        ThemeButton.ToolTip = $"当前模式: {(mode == AppThemeMode.System ? "跟随系统" : mode == AppThemeMode.Dark ? "深色模式" : "浅色模式")} (点击切换)";
 
         if (isDark)
         {
-            // 加深暗黑底色，提高不透明度，防止桌面背景杂色透出显灰
-            TintColor = Color.FromRgb(0x14, 0x14, 0x14);
-            TintOpacity = 0.92;
-            FallbackColor = Color.FromRgb(0x16, 0x16, 0x16);
+            // 暗黑模式画刷
+            Resources["CircleBgBrush"] = new SolidColorBrush(Color.FromArgb(0xF2, 0x18, 0x18, 0x1A));
+            Resources["CircleBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x35, 0xFF, 0xFF, 0xFF));
+            Resources["BarBgBrush"] = new SolidColorBrush(Color.FromArgb(0x40, 0x00, 0x00, 0x00));
+            Resources["TextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            Resources["TextSecondaryBrush"] = new SolidColorBrush(Color.FromRgb(0xA0, 0xA0, 0xA5));
+            Resources["ButtonBgBrush"] = new SolidColorBrush(Color.FromArgb(0x60, 0x30, 0x30, 0x34));
+            Resources["ButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x80, 0x48, 0x48, 0x50));
+            Resources["BorderSubtleBrush"] = new SolidColorBrush(Color.FromArgb(0x28, 0xFF, 0xFF, 0xFF));
+            Resources["AccentBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0x95, 0x00));
+            Resources["AccentTextBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            ResourceDictionaryEx.GlobalTheme = ElementTheme.Dark;
         }
         else
         {
-            // 纯净明亮的浅色
-            TintColor = Color.FromRgb(0xF6, 0xF6, 0xF6);
-            TintOpacity = 0.72;
-            FallbackColor = Color.FromRgb(0xF0, 0xF0, 0xF0);
+            // 浅色模式画刷
+            Resources["CircleBgBrush"] = new SolidColorBrush(Color.FromArgb(0xF5, 0xF8, 0xF9, 0xFA));
+            Resources["CircleBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x25, 0x00, 0x00, 0x00));
+            Resources["BarBgBrush"] = new SolidColorBrush(Color.FromArgb(0x20, 0x00, 0x00, 0x00));
+            Resources["TextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0x1C, 0x1C, 0x1E));
+            Resources["TextSecondaryBrush"] = new SolidColorBrush(Color.FromRgb(0x6C, 0x6C, 0x70));
+            Resources["ButtonBgBrush"] = new SolidColorBrush(Color.FromArgb(0x50, 0xEA, 0xEA, 0xEF));
+            Resources["ButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x80, 0xDC, 0xDC, 0xE2));
+            Resources["BorderSubtleBrush"] = new SolidColorBrush(Color.FromArgb(0x20, 0x00, 0x00, 0x00));
+            Resources["AccentBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0x3B, 0x30));
+            Resources["AccentTextBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            ResourceDictionaryEx.GlobalTheme = ElementTheme.Light;
         }
     }
 
@@ -123,7 +144,7 @@ public partial class MainWindow : AcrylicWindow
         }
         catch
         {
-            // 默认返回 false (浅色)
+            // ignore
         }
         return false;
     }
@@ -156,7 +177,7 @@ public partial class MainWindow : AcrylicWindow
         TimeTextBlock.Text = DateTime.Now.ToString("HH:mm:ss");
     }
 
-    // 使用 Ookii.Dialogs.Wpf 的 VistaFolderBrowserDialog 实现 WPF 原生文件夹选择
+    // 浏览背景音乐文件夹
     private void BrowseBackgroundFolder_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new VistaFolderBrowserDialog
@@ -168,15 +189,18 @@ public partial class MainWindow : AcrylicWindow
         {
             _backgroundDir = dialog.SelectedPath;
             BackgroundDirBox.Text = _backgroundDir;
+            var dirName = Path.GetFileName(_backgroundDir);
+            BrowseFolderButton.Content = string.IsNullOrEmpty(dirName) ? "🎵 已选歌" : $"🎵 {dirName}";
+            BrowseFolderButton.ToolTip = _backgroundDir;
         }
     }
 
-    // 用户点击“开始专注”按钮
+    // 开始专注
     private void StartButton_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_backgroundDir) || !Directory.Exists(_backgroundDir))
         {
-            MessageBox.Show("请先选择有效的背景音乐文件夹。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("请先点击【📁 选歌】选择有效的背景音乐文件夹。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -190,11 +214,11 @@ public partial class MainWindow : AcrylicWindow
         }
         else
         {
-            MessageBox.Show("请输入有效的分钟数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("请输入有效的专注分钟数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
-    // 每秒触发一次，用于更新倒计时显示
+    // 倒计时每秒更新
     private void TimerTick(object? sender, EventArgs e)
     {
         _remaining = _remaining.Subtract(TimeSpan.FromSeconds(1));
@@ -205,12 +229,12 @@ public partial class MainWindow : AcrylicWindow
             _countDownTimer.Stop();
             _backgroundPlayer.Stop();
             PlayMusic(Caller.End); // 播放结束音效
-            MessageBox.Show("时间到！休息一下吧。", "专注结束", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("时间到！休息一下吧，你太棒了！", "专注结束", MessageBoxButton.OK, MessageBoxImage.Information);
             StartButton.IsEnabled = true;
         }
     }
 
-    // 用户点击“重置”按钮
+    // 重置倒计时
     private void ResetButton_Click(object sender, RoutedEventArgs e)
     {
         _countDownTimer.Stop();
@@ -229,14 +253,13 @@ public partial class MainWindow : AcrylicWindow
         PlayMusic(Caller.Start);
     }
 
-    // 开始音效播放完后回调，开始播放背景音乐
     private void OnStartEffectEnded(object? s, EventArgs e)
     {
         _effectPlayer.MediaEnded -= OnStartEffectEnded;
         PlayMusic(Caller.Background);
     }
 
-    // 根据 Caller 类型播放对应音乐：开始音效、背景音乐、结束音效
+    // 播放音乐
     private void PlayMusic(Caller c)
     {
         MediaPlayer player;
@@ -246,40 +269,33 @@ public partial class MainWindow : AcrylicWindow
 
         if (string.IsNullOrWhiteSpace(musicDir) || !Directory.Exists(musicDir)) return;
 
-        var supported = new[] { ".mp3", ".wav", ".wma", ".aac", ".m4a", ".flac" }; // 支持的音频格式
+        var supported = new[] { ".mp3", ".wav", ".wma", ".aac", ".m4a", ".flac" };
         var files = Directory.GetFiles(musicDir)
             .Where(f => supported.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
             .ToArray();
         if (files.Length == 0) return;
 
-        var selected = files[_random.Next(files.Length)]; // 随机选择一首播放
+        var selected = files[_random.Next(files.Length)];
         player.Open(new Uri(selected, UriKind.Absolute));
         player.Play();
     }
 
-    // 用户点击“下一首”按钮手动切换背景音乐
+    // 切歌
     private void NextTrackButton_Click(object sender, RoutedEventArgs e)
     {
         if (!string.IsNullOrWhiteSpace(_backgroundDir))
         {
-            _backgroundPlayer.Stop(); // 停止当前背景音乐
-            PlayMusic(Caller.Background); // 播放下一首
+            _backgroundPlayer.Stop();
+            PlayMusic(Caller.Background);
         }
     }
 
-    // 支持窗口拖动
-    private void TitleBar_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
-    {
-        if (e.ButtonState == MouseButtonState.Pressed)
-            DragMove();
-    }
-
-    // 音量滑块值变化时，更新背景音乐音量
+    // 音量调节
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_backgroundPlayer != null)
         {
-            _backgroundPlayer.Volume = VolumeSlider.Value; // 设置背景音乐音量（范围：0.0 - 1.0）
+            _backgroundPlayer.Volume = VolumeSlider.Value;
         }
     }
 }
